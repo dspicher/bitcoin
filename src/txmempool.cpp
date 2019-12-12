@@ -4,10 +4,12 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <txmempool.h>
+#include <core_io.h>
 
 #include <consensus/consensus.h>
 #include <consensus/tx_verify.h>
 #include <consensus/validation.h>
+#include <key_io.h>
 #include <optional.h>
 #include <validation.h>
 #include <policy/policy.h>
@@ -411,6 +413,17 @@ void CTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
         // in transactions included in blocks can subscribe to the BlockConnected
         // notification.
         GetMainSignals().TransactionRemovedFromMempool(it->GetSharedTx());
+    }
+
+    switch (reason) {
+        case MemPoolRemovalReason::REPLACED:
+            LogPrint(BCLog::MEMPOOL, "event=rbf;hash=%d;serialization=%s\n", it->GetTx().GetHash().GetHex(), EncodeHexTx(it->GetTx()));
+            break;
+        case MemPoolRemovalReason::CONFLICT:
+            LogPrint(BCLog::MEMPOOL, "event=conflict;hash=%d;serialization=%s\n", it->GetTx().GetHash().GetHex(), EncodeHexTx(it->GetTx()));
+            break;
+        default:
+            break;
     }
 
     const uint256 hash = it->GetTx().GetHash();
