@@ -912,7 +912,7 @@ bool AddOrphanTx(const CTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
     unsigned int sz = GetTransactionWeight(*tx);
     if (sz > MAX_STANDARD_TX_WEIGHT)
     {
-        LogPrint(BCLog::MEMPOOL, "ignoring large orphan tx (size: %u, hash: %s)\n", sz, hash.ToString());
+        // LogPrint(BCLog::MEMPOOL, "ignoring large orphan tx (size: %u, hash: %s)\n", sz, hash.ToString());
         return false;
     }
 
@@ -925,8 +925,8 @@ bool AddOrphanTx(const CTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
 
     AddToCompactExtraTransactions(tx);
 
-    LogPrint(BCLog::MEMPOOL, "stored orphan tx %s (mapsz %u outsz %u)\n", hash.ToString(),
-             mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size());
+    // LogPrint(BCLog::MEMPOOL, "stored orphan tx %s (mapsz %u outsz %u)\n", hash.ToString(),
+    //          mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size());
     return true;
 }
 
@@ -973,7 +973,7 @@ void EraseOrphansFor(NodeId peer)
             nErased += EraseOrphanTx(maybeErase->second.tx->GetHash());
         }
     }
-    if (nErased > 0) LogPrint(BCLog::MEMPOOL, "Erased %d orphan tx from peer=%d\n", nErased, peer);
+    // if (nErased > 0) LogPrint(BCLog::MEMPOOL, "Erased %d orphan tx from peer=%d\n", nErased, peer);
 }
 
 
@@ -1000,7 +1000,7 @@ unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans)
         }
         // Sweep again 5 minutes after the next entry that expires in order to batch the linear scan.
         nNextSweep = nMinExpTime + ORPHAN_TX_EXPIRE_INTERVAL;
-        if (nErased > 0) LogPrint(BCLog::MEMPOOL, "Erased %d orphan tx due to expiration\n", nErased);
+        // if (nErased > 0) LogPrint(BCLog::MEMPOOL, "Erased %d orphan tx due to expiration\n", nErased);
     }
     FastRandomContext rng;
     while (mapOrphanTransactions.size() > nMaxOrphans)
@@ -1227,6 +1227,7 @@ void PeerLogicValidation::BlockConnected(const std::shared_ptr<const CBlock>& pb
         for (const auto& ptx : pblock->vtx) {
             g_recent_confirmed_transactions->insert(ptx->GetHash());
         }
+        // LogPrint(BCLog::MEMPOOL, "Erased %d orphan tx included or conflicted by block\n", nErased);
     }
 }
 
@@ -1943,7 +1944,7 @@ void static ProcessOrphanTx(CConnman* connman, CTxMemPool& mempool, std::set<uin
 
         if (setMisbehaving.count(fromPeer)) continue;
         if (AcceptToMemoryPool(mempool, orphan_state, porphanTx, &removed_txn, false /* bypass_limits */, 0 /* nAbsurdFee */)) {
-            LogPrint(BCLog::MEMPOOL, "   accepted orphan tx %s\n", orphanHash.ToString());
+            // LogPrint(BCLog::MEMPOOL, "   accepted orphan tx %s\n", orphanHash.ToString());
             RelayTransaction(orphanHash, *connman);
             for (unsigned int i = 0; i < orphanTx.vout.size(); i++) {
                 auto it_by_prev = mapOrphanTransactionsByPrev.find(COutPoint(orphanHash, i));
@@ -1961,11 +1962,11 @@ void static ProcessOrphanTx(CConnman* connman, CTxMemPool& mempool, std::set<uin
                 if (MaybePunishNodeForTx(fromPeer, orphan_state)) {
                     setMisbehaving.insert(fromPeer);
                 }
-                LogPrint(BCLog::MEMPOOL, "   invalid orphan tx %s\n", orphanHash.ToString());
+                // LogPrint(BCLog::MEMPOOL, "   invalid orphan tx %s\n", orphanHash.ToString());
             }
             // Has inputs but not accepted to mempool
             // Probably non-standard or insufficient fee
-            LogPrint(BCLog::MEMPOOL, "   removed orphan tx %s\n", orphanHash.ToString());
+            // LogPrint(BCLog::MEMPOOL, "   removed orphan tx %s\n", orphanHash.ToString());
             if (!orphanTx.HasWitness() && orphan_state.GetResult() != TxValidationResult::TX_WITNESS_MUTATED) {
                 // Do not use rejection cache for witness transactions or
                 // witness-stripped transactions, as they can have been malleated.
@@ -2720,10 +2721,10 @@ bool ProcessMessage(CNode* pfrom, const std::string& msg_type, CDataStream& vRec
 
             pfrom->nLastTXTime = GetTime();
 
-            LogPrint(BCLog::MEMPOOL, "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u txn, %u kB)\n",
-                pfrom->GetId(),
-                tx.GetHash().ToString(),
-                mempool.size(), mempool.DynamicMemoryUsage() / 1000);
+            // LogPrint(BCLog::MEMPOOL, "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u txn, %u kB)\n",
+            //     pfrom->GetId(),
+            //     tx.GetHash().ToString(),
+            //     mempool.size(), mempool.DynamicMemoryUsage() / 1000);
 
             // Recursively process any orphan transactions that depended on this one
             ProcessOrphanTx(connman, mempool, pfrom->orphan_work_set, lRemovedTxn);
@@ -2752,10 +2753,10 @@ bool ProcessMessage(CNode* pfrom, const std::string& msg_type, CDataStream& vRec
                 unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, gArgs.GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS));
                 unsigned int nEvicted = LimitOrphanTxSize(nMaxOrphanTx);
                 if (nEvicted > 0) {
-                    LogPrint(BCLog::MEMPOOL, "mapOrphan overflow, removed %u tx\n", nEvicted);
+                    // LogPrint(BCLog::MEMPOOL, "mapOrphan overflow, removed %u tx\n", nEvicted);
                 }
             } else {
-                LogPrint(BCLog::MEMPOOL, "not keeping orphan with rejected parents %s\n",tx.GetHash().ToString());
+                // LogPrint(BCLog::MEMPOOL, "not keeping orphan with rejected parents %s\n",tx.GetHash().ToString());
                 // We will continue to reject this tx since it has rejected
                 // parents so avoid re-requesting it from other peers.
                 recentRejects->insert(tx.GetHash());
@@ -2810,9 +2811,9 @@ bool ProcessMessage(CNode* pfrom, const std::string& msg_type, CDataStream& vRec
 
         if (state.IsInvalid())
         {
-            LogPrint(BCLog::MEMPOOLREJ, "%s from peer=%d was not accepted: %s\n", tx.GetHash().ToString(),
-                pfrom->GetId(),
-                state.ToString());
+          //  LogPrint(BCLog::MEMPOOLREJ, "%s from peer=%d was not accepted: %s\n", tx.GetHash().ToString(),
+          //      pfrom->GetId(),
+          //      state.ToString());
             MaybePunishNodeForTx(pfrom->GetId(), state);
         }
         return true;
